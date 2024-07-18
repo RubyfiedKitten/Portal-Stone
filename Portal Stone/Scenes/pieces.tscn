@@ -1,0 +1,10 @@
+[gd_scene load_steps=3 format=3 uid="uid://q7w1cmejnbp6"]
+
+[ext_resource type="Texture2D" uid="uid://di4as0k2oisvx" path="res://Assets/pieces.png" id="1_g7asb"]
+[ext_resource type="Script" path="res://Scripts/pieces.gd" id="2_w83kg"]
+
+[node name="pieces" type="Sprite2D"]
+top_level = true
+scale = Vector2(5, 5)
+texture = ExtResource("1_g7asb")
+script = ExtResource("2_w83kg")
