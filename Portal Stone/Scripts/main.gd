@@ -12,7 +12,8 @@ var turn := 1
 var direction : Vector2 
 var piece = []
 var count = 1
-var pushed
+var pushed = null
+var turn_count := 1
 var mouse_swapped := false
 var turn_and_color = {1 : Color("RED"), 2 : Color("GREEN")}
 
@@ -37,32 +38,35 @@ func _ready(): # Generates the grids
 #	summon_piece(Vector2(3,3))
 #	summon_piece(Vector2(2,3))
 
-func _process(_delta):
+func _process(_delta): # Main loop
+
 	$"ui/P1Score".text = "Player 1: " + str(p1Score)
 	$"ui/P2Score".text = "Player 2: " + str(p2Score)
-	
+	$ui/feedback3.text = "pushed: " + str(pushed)
+
 	if Input.is_action_just_released("click"):
 		selected_cell = get_cell()
-		#print(selected_cell)
-		#mouse_swapped = false
 		the_click_function()
 
 func check_next(cell): # check for gap
 	cell = cell + direction * count
-	if not (cell.x < 0 or cell.x > 4 or cell.y < 0 or cell.y > 4):
+	if not (cell.x < 0 or cell.x > 4 or cell.y < 0 or cell.y > 4): # Checks if the piece is still on the board.
 		var result = piece[cell.x][cell.y]
-		if result != null:
+		if result != null: 	# there's a piece, move along
 			count += 1
 			return false
-		else: 
+		else: 				# GAP
 			return true
-	else:
+	else: 					# else it's a pushed piece
 		count -= 1
 		cell = cell - direction
 		pushed = piece[cell.x][cell.y].modulate
-		if pushed == turn_and_color[turn]:
-			pushed = null
+		if pushed == turn_and_color[turn]: #If you push off your own piece:
+			pushed = null						#delete it
+			turn_count = 1
 			turn = 3 - turn
+		else:
+			turn_count = 2
 		piece[cell.x][cell.y].queue_free()
 		piece[cell.x][cell.y] = null
 		return true
@@ -100,19 +104,17 @@ func summon_piece(piece_location):
 	var x = piece_location.x
 	var y = piece_location.y
 	piece[x][y] = Pieces.instantiate()
-	if turn == 1:
-		piece[x][y].modulate = turn_and_color[1]
-	elif turn == 2:
-		piece[x][y].modulate = turn_and_color[2]
+	piece[x][y].modulate = turn_and_color[turn]
 	$"pieces storage".add_child(piece[x][y])
 	piece[x][y].new_position = piece_location
 	piece[x][y].global_position = cells[piece_location]
-	if pushed != null:
+	if turn_count > 1:
 		pushed = null
 	else: 
 		turn = 3 - turn
 	$ui/feedback.text = "It is player " + str(turn) + "'s turn."
-	print(str(pushed) + ": " + str(turn_and_color[turn]))
+	#print("Turn count: " + str(turn_count))
+	turn_count = 1
 
 func check_edge(cell): # will return true or false
 	if (cell.x == 0 or cell.x == 4) or (cell.y == 0 or cell.y == 4):
@@ -181,10 +183,11 @@ func _input(event):
 			else:
 				set_mouse("block") # This is in the center of the board. You're not allowed to place pieces here.
 
-func scoring():
+func five_in_a_row():
 	pass
-	#don't have to check from the start of the game, only when the first 9 pieces have been played, check from then on. a boolean that's just a one time flip at the start of the game.
-	#check for 5 in a row of the same color. 
+
+func scoring():
+	five_in_a_row()
 	#remove those 5.
 	# give the right player that point.
 
