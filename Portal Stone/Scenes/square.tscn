@@ -1,0 +1,29 @@
+[gd_scene load_steps=2 format=3 uid="uid://dckpr60he7v44"]
+
+[ext_resource type="Script" path="res://scripts/squarecolor.gd" id="1_n4py8"]
+
+[node name="Square" type="ColorRect"]
+custom_minimum_size = Vector2(60, 60)
+offset_right = 54.0
+offset_bottom = 52.0
+script = ExtResource("1_n4py8")
+
+[node name="ColorRect" type="ColorRect" parent="."]
+layout_mode = 0
+offset_left = 1.0
+offset_top = 1.0
+offset_right = 59.0
+offset_bottom = 59.0
+color = Color(0, 0, 0, 1)
+
+[node name="Marker2D" type="Marker2D" parent="."]
+visible = false
+position = Vector2(30, 30)
+
+[node name="ColorRect2" type="ColorRect" parent="."]
+layout_mode = 0
+offset_left = 26.1888
+offset_top = 25.4093
+offset_right = 35.1888
+offset_bottom = 34.4093
+rotation = 6.28319
