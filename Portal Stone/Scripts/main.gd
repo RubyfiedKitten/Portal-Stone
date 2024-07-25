@@ -1,37 +1,38 @@
 extends Node2D
 
-var red_piece = preload("res://Scenes/red_piece.tscn")
-var green_piece = preload("res://Scenes/green_piece.tscn")
-var row_sum = 0
-var col_sum = 0
+var Pieces = load("res://Scenes/pieces.tscn")
 const grid_offset = 15
 const grid_size := 5
 const cell_size : float = 100
+var winner = null
 var cells = {}
 var p1Score = 0
 var p2Score = 0
 var selected_cell
 var turn := 1
-var turn_count := 0
 var direction : Vector2 
-var grid_data = [] # grid_data
+var piece = []
 var count = 1
-var pushed = 0
+var pushed = null
 var mouse_swapped := false
-#var turn_and_color = {1 : Color("RED"), 2 : Color("GREEN")}
+var turn_and_color = {1 : Color("RED"), 2 : Color("GREEN")}
+var players_and_turns = {1: 1, 2: 0}
 
 func _ready(): # Generates the grids
-	grid_data.resize(grid_size)
-	for k in grid_size:
-		grid_data[k] = []
-		grid_data[k].resize(grid_size)
+	$GameOverScreen.hide()
+	get_tree().paused = false
+	piece.resize(grid_size)
+	for k in 5:
+		piece[k] = []
+		piece[k].resize(grid_size)
 	for x in grid_size:
 		for y in grid_size:													 # Grid_cords : cell_cords
 			var grid_cords = Vector2(x, y) # What I want is the dictionary to have (0, 0) : (75, 75)
 			var cell_cord = Vector2(75+ x * (cell_size +  grid_offset), 75 + y * (cell_size + grid_offset))
 			cells[grid_cords] = cell_cord
-			grid_data[x][y] = 0
+			piece[x][y] = null
 	$ui/feedback2.text = "I serve as feedback :)"
+	$ui/feedback.text = "It is player " + str(turn) + "'s turn."
 #	summon_piece(Vector2(3,2))
 #	summon_piece(Vector2(0,3))
 #	summon_piece(Vector2(2,1))
@@ -45,50 +46,53 @@ func _process(_delta): # Main loop
 
 	$"ui/P1Score".text = "Player 1: " + str(p1Score)
 	$"ui/P2Score".text = "Player 2: " + str(p2Score)
+	$ui/feedback4.text = "Turns: " + str(players_and_turns[turn])
 
 	if Input.is_action_just_released("click"):
 		selected_cell = get_cell()
 		the_click_function()
-		scoring()
-		print(grid_data)
+
+	if p1Score == 3:
+		winner = 1
+		win()
+	elif p2Score == 3:
+		winner = 2
+		win()
 
 func check_next(cell): # check for gap
 	cell = cell + direction * count
-	if not (cell.x < 0 or cell.x > 4 or cell.y < 0 or cell.y > 4): # Checks if the grid_data is still on the board.
-		var result = grid_data[cell.x][cell.y]
-		if result != 0: 	# there's a grid_data, move along
+	if not (cell.x < 0 or cell.x > 4 or cell.y < 0 or cell.y > 4): # Checks if the piece is still on the board.
+		var result = piece[cell.x][cell.y]
+		if result != null: 	# there's a piece, move along
 			count += 1
 			return false
 		else: 				# GAP
 			return true
-	else: 					# else it's a pushed grid_data
+	else: 					# else it's a pushed piece
 		count -= 1
 		cell = cell - direction
-		pushed = grid_data[cell.x][cell.y]
-		#last_pushed = pushed
-		if turn_count < 2: # Checks if i'm not using a pushed grid_data.
-			if pushed == turn: # If you push off your own grid_data:
-				pushed = 0						# sdelete it
-				turn_count += 1
-				turn_change()
+		if players_and_turns[turn] == 1:
+			pushed = piece[cell.x][cell.y].modulate
+			if pushed == turn_and_color[turn]: #If you push off your own piece:
+				pushed = null						#delete it
+				
 			else:
-				#pushed = last_pushed
-				turn_count = 1
-				turn_change()
-			grid_data[cell.x][cell.y].queue_free()
-			grid_data[cell.x][cell.y] = 0
+				pushed = null
+				players_and_turns[3 - turn] += 1
+			piece[cell.x][cell.y].queue_free()
+			piece[cell.x][cell.y] = null
 			return true
 		else:
-			$ui/feedback.text = "Can't push off with a pushed grid_data!"
+			$ui/feedback.text = "Can't push with a pushed piece!"
 
 func find_gap(cell):
-	if grid_data[cell.x][cell.y] == 0:
+	if piece[cell.x][cell.y] == null:
 		summon_piece(cell)
 	else:
 		while check_next(cell) == false:
-			pass #This confuses me, idk why it works
+			pass
 		for n in count:
-			move_piece(cell + (direction * (count - 1)))
+			move_piece(cell + (direction *(count - 1)))
 			count -= 1
 		summon_piece(cell)
 
@@ -113,28 +117,24 @@ func get_cell(): # basically where the player clicks
 func summon_piece(piece_location):
 	var x = piece_location.x
 	var y = piece_location.y
-	if turn == 1:
-		var red_piece = red_piece.instantiate()
-		grid_data[x][y] = turn
-		$"pieces storage".add_child(red_piece)
-		red_piece.global_position = cells[piece_location]
-		$ui/feedback.text = "It is player 2's turn."
-	elif turn == -1:
-		var green_piece = green_piece.instantiate()
-		grid_data[x][y] = turn
-		$"pieces storage".add_child(green_piece)
-		green_piece.global_position = cells[piece_location]
-		$ui/feedback.text = "It is player 1's turn."
+	piece[x][y] = Pieces.instantiate()
+	piece[x][y].modulate = turn_and_color[turn]
+	$"pieces storage".add_child(piece[x][y])
+	piece[x][y].new_position = piece_location
+	piece[x][y].global_position = cells[piece_location]
+	check_rows_and_cols()
 	turn_change()
-	
+	$ui/feedback.text = "It is player " + str(turn) + "'s turn."
 
 func turn_change():
-	if turn_count > 1:
-		turn_count -= 1
+	if players_and_turns[turn] > 1:
+		players_and_turns[turn] -= 1
 	else:
-		turn *= -1
+		players_and_turns[turn] -= 1
+		players_and_turns[3 - turn] += 1
+		turn = 3 - turn
 
-func check_edge(cell): # returns true or false
+func check_edge(cell): # will return true or false
 	if (cell.x == 0 or cell.x == 4) or (cell.y == 0 or cell.y == 4):
 		return true
 	else:
@@ -142,10 +142,10 @@ func check_edge(cell): # returns true or false
 
 func move_piece(cell):
 	var next_cell = cell + direction
-	pushed = 0
-	grid_data[next_cell.x][next_cell.y] = grid_data[cell.x][cell.y]
-	grid_data[next_cell.x][next_cell.y].global_position = cells[next_cell]
-	grid_data[cell.x][cell.y] = 0
+	piece[next_cell.x][next_cell.y] = piece[cell.x][cell.y]
+	var tween = get_tree().create_tween()
+	tween.tween_property(piece[next_cell.x][next_cell.y],"global_position",cells[next_cell],0.1).set_trans(Tween.TRANS_SINE)
+	piece[cell.x][cell.y] = null
 
 func set_mouse(n):
 	if n == "right":
@@ -167,13 +167,13 @@ func set_mouse(n):
 		Input.set_custom_mouse_cursor(ResourceLoader.load("res://cursors/cursor default.png"))
 		direction = Vector2(0,0)
 
-func _input(event): #This just does the mouse, which detemines the direction.
+func _input(event):
 	if Input.is_action_just_pressed("swap direction"):
 		mouse_swapped = !mouse_swapped
 
 	if event is InputEventMouseMotion:
 		var cell_cords = get_cell()
-		if cell_cords != null: # default directions
+		if cell_cords != null:
 			if cell_cords.x == 0:
 				set_mouse("left")
 			elif cell_cords.x == 4:
@@ -182,7 +182,7 @@ func _input(event): #This just does the mouse, which detemines the direction.
 				set_mouse("top")
 			elif cell_cords.y == 4:
 				set_mouse("bottom")
-			# checks corners
+			
 			if cell_cords == Vector2(0, 0) or cell_cords == Vector2(4, 0) or cell_cords == Vector2(0, 4) or  cell_cords == Vector2(4, 4):
 				if not mouse_swapped:
 					pass
@@ -201,37 +201,64 @@ func _input(event): #This just does the mouse, which detemines the direction.
 			else:
 				set_mouse("block") # This is in the center of the board. You're not allowed to place pieces here.
 
-func five_in_a_row():
-	for i in grid_size:
-		row_sum = grid_data[i][0] + grid_data[i][1] + grid_data[i][2] + grid_data[i][3] + grid_data[i][4]
-		col_sum = grid_data[0][i] + grid_data[1][i] + grid_data[2][i] + grid_data[3][i] + grid_data[4][i]
+func five_in_a_row(y):
+	var matching = true
+	for x in grid_size - 1:
+		if piece[0][y] != null and piece[x+1][y] != null:
+			if piece[0][y].modulate != piece[x+1][y].modulate: 
+				matching = false
+				break 
+		else:
+			matching = false
+	return matching
 
-		if row_sum == 5:
-			p1Score += 1
-			return [grid_data[i][0], grid_data[i][1], grid_data[i][2], grid_data[i][3], grid_data[i][4]]
-		elif row_sum == -5:
-			p2Score += 1
-			return [grid_data[i][0], grid_data[i][1], grid_data[i][2], grid_data[i][3], grid_data[i][4]]
-		elif col_sum == 5:
-			p1Score += 1
-			return [grid_data[0][i], grid_data[1][i], grid_data[2][i], grid_data[3][i], grid_data[4][i]]
-		elif col_sum == -5:
-			p2Score += 1
-			return [grid_data[0][i], grid_data[1][i], grid_data[2][i], grid_data[3][i], grid_data[4][i]]
+func five_in_a_col(x):
+	var matching = true
+	for y in grid_size - 1:
+		if piece[x][0] != null and piece[x][y+1] != null:
+			if piece[x][0].modulate != piece[x][y+1].modulate: 
+				matching = false
+				break 
+		else:
+			matching = false
+	return matching
 
-func scoring():
-	var five = five_in_a_row()
-	if five != null:
-		five[0] = 0 # remove those 5 pieces
-		five[1] = 0
-		five[2] = 0
-		five[3] = 0
-		five[4] = 0
+func check_rows_and_cols():
+	var color
+	for row in 5:
+		if five_in_a_row(row):
+			color = piece[0][row].modulate
+			for i in 5:
+				piece[i][row].queue_free()
+				piece[i][row] = null
+			if Color("RED") == color:
+				p1Score += 1
+			else:
+				p2Score += 1
+	 
+	for col in 5:
+		if five_in_a_col(col):
+			color = piece[col][0].modulate
+			for i in 5:
+				piece[col][i].queue_free()
+				piece[col][i] = null
+			if Color("RED") == color:
+				p1Score += 1
+			else:
+				p2Score += 1
 
 func win():
-	if p1Score == 3:
-		pass
+	$GameOverScreen.show()
+	$GameOverScreen/ColorRect/Label.text = "Player " + str(winner) + " wins!"
+	if winner != null:
 		get_tree().paused = true
-	elif p2Score == 3:
-		pass
-		get_tree().paused = true
+
+func is_board_full(): # checks if board is filled
+	for x in grid_size:
+		for y in grid_size:
+			if piece[x][y] == null:
+				return false
+	return true
+
+func _on_game_over_screen_restart():
+	get_tree().reload_current_scene()

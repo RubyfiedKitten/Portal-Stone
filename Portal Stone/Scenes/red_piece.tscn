@@ -1,8 +1,0 @@
-[gd_scene load_steps=2 format=3 uid="uid://cxuqrbbrefpue"]
-
-[ext_resource type="Texture2D" uid="uid://di4as0k2oisvx" path="res://Assets/pieces.png" id="1_kkv74"]
-
-[node name="Red piece" type="Sprite2D" groups=["red"]]
-modulate = Color(1, 0, 0, 1)
-scale = Vector2(5, 5)
-texture = ExtResource("1_kkv74")
